@@ -7,9 +7,11 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Scanner;
 
 public class Lox {
+  private static final Scanner scanner = new Scanner();
+  static boolean hadError = false;
+
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
       System.out.println("Usage: jlox [script]");
@@ -20,9 +22,11 @@ public class Lox {
       runPrompt();
     }
   }
+
   private static void runFile(String path) throws IOException {
     byte[] bytes = Files.readAllBytes(Paths.get(path));
     run(new String(bytes, Charset.defaultCharset()));
+    if (hadError) System.exit(65);
   }
 
   private static void runPrompt() throws IOException {
@@ -34,28 +38,35 @@ public class Lox {
       String line = reader.readLine();
       if (line == null) break;
       run(line);
+      hadError = false;
     }
   }
 
   private static void run(String source) {
-    // Scanner scanner = new Scanner(source);
-    //List<Token> tokens = scanner.scanTokens();
+    List<Token> tokens = scanner.scanTokens(source);
+    Parser parser = new Parser(tokens);
+    Expr expression = parser.parse();
 
-    // For now, just print the tokens.
-    //for (Token token : tokens) {
-      System.out.println(source);
-    //}
+    // Stop if there was a syntax error.
+    if (hadError) return;
+
+    System.out.println(new AstPrinter().print(expression));
   }
 
   static void error(Token token, String message) {
     if (token.type == TokenType.EOF) {
-        report(token.line, " at end", message);
+      report(token.line, " at end", message);
     } else {
-        report(token.line, " at '" + token.lexeme + "'", message);
+      report(token.line, " at '" + token.lexeme + "'", message);
     }
+  }
+
+  private static void report(int line, String where, String message) {
+    System.err.println("[line " + line + "] Error" + where + ": " + message);
+    hadError = true;
+  }
 }
 
-}
 
 
 
